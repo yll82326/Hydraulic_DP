@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drill Pipe Pressure Loss Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .calculator {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: inline-block;
+            width: 200px;
+            margin-right: 10px;
+        }
+        input {
+            width: 150px;
+            padding: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>Drill Pipe Pressure Loss Calculator</h2>
+        
+        <div class="input-group">
+            <label>Mud Weight (ppg):</label>
+            <input type="number" id="mw" step="0.1">
+        </div>
+        
+        <div class="input-group">
+            <label>Plastic Viscosity (cP):</label>
+            <input type="number" id="pv">
+        </div>
+        
+        <div class="input-group">
+            <label>Yield Point (lb/100ft²):</label>
+            <input type="number" id="yp">
+        </div>
+        
+        <div class="input-group">
+            <label>Flow Rate (GPM):</label>
+            <input type="number" id="gpm">
+        </div>
+        
+        <div class="input-group">
+            <label>Drill Pipe ID (inches):</label>
+            <input type="number" id="id" step="0.1">
+        </div>
+        
+        <div class="input-group">
+            <label>Drill Pipe Length (ft):</label>
+            <input type="number" id="length">
+        </div>
+        
+        <button onclick="calculatePressureLoss()">Calculate</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function calculatePressureLoss() {
+            // Get input values
+            const mw = parseFloat(document.getElementById('mw').value);
+            const pv = parseFloat(document.getElementById('pv').value);
+            const yp = parseFloat(document.getElementById('yp').value);
+            const gpm = parseFloat(document.getElementById('gpm').value);
+            const id = parseFloat(document.getElementById('id').value);
+            const length = parseFloat(document.getElementById('length').value);
+
+            // Calculate fluid velocity in ft/s
+            const velocity = 0.408 * gpm / Math.pow(id, 2);
+
+            // Calculate Reynolds Number
+            const reynolds = (928 * mw * velocity * id) / pv;
+
+            let deltaP = 0;
+
+            if (reynolds < 2300) {
+                // Laminar flow calculation
+                const velocityFtMin = velocity * 60; // Convert to ft/min
+                const viscousComponent = (pv * length * velocityFtMin) / (1500 * Math.pow(id, 2));
+                const yieldComponent = (yp * length) / (225 * id);
+                deltaP = viscousComponent + yieldComponent;
+            } else {
+                // Turbulent flow calculation
+                const frictionFactor = 0.046 / Math.pow(reynolds, 0.2);
+                deltaP = (frictionFactor * length * mw * Math.pow(velocity, 2)) / (25.8 * id);
+            }
+
+            // Display result
+            document.getElementById('result').innerHTML = 
+                `Drill Pipe Pressure Loss: <strong>${deltaP.toFixed(2)} psi</strong>`;
+        }
+    </script>
+</body>
+</html>
