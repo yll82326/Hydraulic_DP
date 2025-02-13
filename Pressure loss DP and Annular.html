@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drilling Pressure Loss Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .calculator {
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        label {
+            width: 250px;
+            margin-right: 15px;
+        }
+        input {
+            width: 150px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #2196F3;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 15px 0;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #1976D2;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+        .error {
+            color: #dc3545;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>Drilling Hydraulics Calculator</h2>
+        
+        <div class="input-group">
+            <label>Mud Weight (ppg):</label>
+            <input type="number" id="mw" step="0.1">
+        </div>
+        
+        <div class="input-group">
+            <label>Plastic Viscosity (cP):</label>
+            <input type="number" id="pv">
+        </div>
+        
+        <div class="input-group">
+            <label>Yield Point (lb/100ft²):</label>
+            <input type="number" id="yp">
+        </div>
+        
+        <div class="input-group">
+            <label>Flow Rate (GPM):</label>
+            <input type="number" id="gpm">
+        </div>
+        
+        <div class="input-group">
+            <label>Hole Size (inches):</label>
+            <input type="number" id="hole" step="0.1">
+        </div>
+        
+        <div class="input-group">
+            <label>Pipe OD (inches):</label>
+            <input type="number" id="od" step="0.1">
+        </div>
+        
+        <div class="input-group">
+            <label>Pipe ID (inches):</label>
+            <input type="number" id="id" step="0.1">
+        </div>
+        
+        <div class="input-group">
+            <label>Pipe Length (ft):</label>
+            <input type="number" id="length">
+        </div>
+
+        <button onclick="calculateAll()">Calculate Pressure Losses</button>
+        
+        <div class="results" id="results" style="display: none;">
+            <div class="result-item" id="pipe-result">
+                Drill Pipe Pressure Loss: <span class="value">-</span> psi
+            </div>
+            <div class="result-item" id="annular-result">
+                Annular Pressure Loss: <span class="value">-</span> psi
+            </div>
+        </div>
+        
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        function calculateAll() {
+            // Clear previous results and errors
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').innerHTML = '';
+            
+            // Get input values
+            const inputs = {
+                mw: parseFloat(document.getElementById('mw').value),
+                pv: parseFloat(document.getElementById('pv').value),
+                yp: parseFloat(document.getElementById('yp').value),
+                gpm: parseFloat(document.getElementById('gpm').value),
+                hole: parseFloat(document.getElementById('hole').value),
+                od: parseFloat(document.getElementById('od').value),
+                id: parseFloat(document.getElementById('id').value),
+                length: parseFloat(document.getElementById('length').value)
+            };
+
+            // Validate inputs
+            if (inputs.hole <= inputs.od) {
+                showError("Hole size must be larger than pipe OD");
+                return;
+            }
+
+            // Calculate both pressure losses
+            const pipeLoss = calculatePipeLoss(inputs);
+            const annularLoss = calculateAnnularLoss(inputs);
+
+            // Display results
+            document.getElementById('pipe-result').innerHTML = 
+                `Drill Pipe Pressure Loss: <span class="value">${pipeLoss.toFixed(2)}</span> psi`;
+            document.getElementById('annular-result').innerHTML = 
+                `Annular Pressure Loss: <span class="value">${annularLoss.toFixed(2)}</span> psi`;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function calculatePipeLoss(inputs) {
+            // Pipe velocity (ft/s)
+            const velocity = 0.408 * inputs.gpm / Math.pow(inputs.id, 2);
+            
+            // Reynolds Number
+            const Re = (928 * inputs.mw * velocity * inputs.id) / inputs.pv;
+            
+            // Pressure loss calculation
+            if (Re < 2100) { // Laminar
+                const velFtMin = velocity * 60;
+                return (inputs.pv * inputs.length * velFtMin) / (1500 * Math.pow(inputs.id, 2)) + 
+                       (inputs.yp * inputs.length) / (225 * inputs.id);
+            } else { // Turbulent
+                const f = 0.046 / Math.pow(Re, 0.2);
+                return (f * inputs.length * inputs.mw * Math.pow(velocity, 2)) / (25.8 * inputs.id);
+            }
+        }
+
+        function calculateAnnularLoss(inputs) {
+            // Hydraulic diameter
+            const dh = inputs.hole - inputs.od;
+            
+            // Annular velocity (ft/s)
+            const velocity = 0.408 * inputs.gpm / (Math.pow(inputs.hole, 2) - Math.pow(inputs.od, 2));
+            
+            // Reynolds Number
+            const Re = (928 * inputs.mw * velocity * dh) / inputs.pv;
+            
+            // Pressure loss calculation
+            if (Re < 2100) { // Laminar
+                const velFtMin = velocity * 60;
+                return (inputs.pv * inputs.length * velFtMin) / (1000 * Math.pow(dh, 2)) + 
+                       (inputs.yp * inputs.length) / (225 * dh);
+            } else { // Turbulent
+                const f = 0.046 / Math.pow(Re, 0.2);
+                return (f * inputs.length * inputs.mw * Math.pow(velocity, 2)) / (25.8 * dh);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('error').innerHTML = message;
+        }
+    </script>
+</body>
+</html>
